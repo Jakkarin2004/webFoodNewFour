@@ -112,7 +112,7 @@ router.post("/", (req, res) => {
 
         db.query(
           "INSERT INTO order_items (order_id, menu_id, quantity, price) VALUES (?, ?, ?, ?)",
-          [orderId, menuId, 1, item.price],
+          [orderId, menuId, item.quantity, item.price],
           (err) => {
             if (err) {
               hasError = true;

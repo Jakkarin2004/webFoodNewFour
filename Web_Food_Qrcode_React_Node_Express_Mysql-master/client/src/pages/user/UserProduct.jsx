@@ -76,7 +76,7 @@ const UserProduct = () => {
   table_number,
   items: cart.map((item) => ({
     menu_id: item.id,
-    quantity: item.quantity || 1,
+    quantity: item.quantity,
     price: parseFloat(item.price) * (item.quantity || 1), // เก็บเป็นตัวเลข ไม่ต้อง
   })),
 };

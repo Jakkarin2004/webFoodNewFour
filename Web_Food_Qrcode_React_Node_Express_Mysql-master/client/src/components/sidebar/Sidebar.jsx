@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import {
   Home,
   BarChart3,
@@ -18,16 +18,93 @@ import {
   Calendar
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useAuthStore from "../../stores/authStore";
+import axios from "axios";
+import { io } from "socket.io-client";
 
 
 const Sidebar = ({ children, isOpen = true, onToggle }) => {
   const [collapsed, setCollapsed] = useState(!isOpen);
+const [orderCount, setOrderCount] = useState(0);
+
+
+// useEffect(() => {
+//   const socket = io("http://localhost:3000");
+
+//   socket.on("connect", () => {
+//     console.log("Socket connected:", socket.id);
+//   });
+
+//   socket.on("connect_error", (err) => {
+//     console.error("Socket connection error:", err);
+//   });
+
+//   // ฟัง event orderCountUpdated
+//   socket.on("orderCountUpdated", (data) => {
+//     console.log("Received orderCountUpdated:", data);
+//     setOrderCount(data.count);
+//   });
+
+//   return () => {
+//     socket.disconnect();
+//   };
+// }, []);
+
+
+  useEffect(() => {
+    const socket = io("http://localhost:3000");
+
+    const fetchOrderCount = async () => {
+      try {
+        const token = useAuthStore.getState().token;
+        const res = await axios.get("http://localhost:3000/api/owner/orders/count", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setOrderCount(res.data.count);
+      } catch (err) {
+        console.error("โหลดจำนวนออเดอร์ล้มเหลว:", err);
+      }
+    };
+
+    fetchOrderCount();
+
+    socket.on("orderCountUpdated", (data) => {
+      setOrderCount(data.count);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed);
     if (onToggle) onToggle(!collapsed);
   };
   const navigate = useNavigate();
+
+useEffect(() => {
+  const fetchOrderCount = async () => {
+    try {
+      const token = useAuthStore.getState().token;
+      console.log('orderCount:', orderCount); // ✅ ควรมีค่า เช่น 3
+
+      const res = await axios.get('http://localhost:3000/api/owner/orders/count', {
+        headers: {
+          Authorization: `Bearer ${token}` // ถ้ามี verifyToken
+        }
+      });
+      setOrderCount(res.data.count);
+    } catch (err) {
+      console.error('โหลดจำนวนออเดอร์ล้มเหลว:', err);
+    }
+  };
+
+  fetchOrderCount();
+}, []);
+
 
   const menuItems = [
     {
@@ -41,7 +118,7 @@ const Sidebar = ({ children, isOpen = true, onToggle }) => {
       id: 'orders',
       label: 'ออเดอร์',
       icon: ShoppingCart,
-      badge: '3',
+      badge: orderCount > 0 ? orderCount.toString() : null,
       path: '/orders',
     },
     {

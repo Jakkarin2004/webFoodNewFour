@@ -9,15 +9,80 @@ router.use(verifyToken, isOwner);
 
 
 // อออเดอร์ทั้งหมด
+// router.get("/all", verifyToken, isOwner, async (req, res) => {
+//   try {
+//     const [rows] = await db.promise().query("SELECT * FROM orders"); // หรือคำสั่ง SQL ที่คุณใช้
+//     res.json({ orders: rows });
+//   } catch (error) {
+//     console.error("🔥 เกิดข้อผิดพลาดใน backend:", error);
+//     res.status(500).json({ message: "เกิดข้อผิดพลาดในฝั่งเซิร์ฟเวอร์" });
+//   }
+// });
+// ออเดอร์เฉพาะของ "วันนี้"
 router.get("/all", verifyToken, isOwner, async (req, res) => {
   try {
-    const [rows] = await db.promise().query("SELECT * FROM orders"); // หรือคำสั่ง SQL ที่คุณใช้
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" });
+
+    const [rows] = await db.promise().query(
+      `SELECT * FROM orders 
+       WHERE DATE(CONVERT_TZ(order_time, '+00:00', '+07:00')) = ?`,
+      [today]
+    );
+
     res.json({ orders: rows });
   } catch (error) {
     console.error("🔥 เกิดข้อผิดพลาดใน backend:", error);
     res.status(500).json({ message: "เกิดข้อผิดพลาดในฝั่งเซิร์ฟเวอร์" });
   }
 });
+
+// router.get('/count', verifyToken, isOwner, async (req, res) => {
+//   try {
+//     const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+
+//     const [rows] = await db.promise().query(`
+//       SELECT COUNT(*) AS count
+//       FROM orders
+//       WHERE DATE(CONVERT_TZ(order_time, '+00:00', '+07:00')) = ?
+//         AND status NOT IN ('completed', 'cancelled')
+//     `, [today]);
+
+//     res.json({ count: rows[0].count });
+//   } catch (err) {
+//     console.error('❌ เกิดข้อผิดพลาด:', err);
+//     res.status(500).json({ message: 'ไม่สามารถดึงจำนวนออเดอร์วันนี้ได้' });
+//   }
+// });
+
+router.get('/count', verifyToken, isOwner, async (req, res) => {
+  try {
+    // วันที่ปัจจุบันในรูปแบบ YYYY-MM-DD (Asia/Bangkok)
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+
+    // ดึงจำนวนออเดอร์ที่ยังไม่ completed หรือ cancelled
+    const [rows] = await db.promise().query(`
+      SELECT COUNT(*) AS count
+      FROM orders
+      WHERE DATE(CONVERT_TZ(order_time, '+00:00', '+07:00')) = ?
+        AND status NOT IN ('completed', 'cancelled')
+    `, [today]);
+
+    const count = rows?.[0]?.count ?? 0;
+
+    // ส่ง event แจ้ง client ผ่าน socket.io (ถ้ามี)
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("orderCountUpdated", { count });
+    }
+
+    // ส่ง response กลับ client
+    return res.json({ count });
+  } catch (error) {
+    console.error('❌ เกิดข้อผิดพลาด:', error);
+    return res.status(500).json({ message: 'ไม่สามารถดึงจำนวนออเดอร์วันนี้ได้' });
+  }
+});
+
 
 // คำนวนราคาในวันนี้
 router.get("/today-revenue", verifyToken, isOwner, async (req, res) => {
