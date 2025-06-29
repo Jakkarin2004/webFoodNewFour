@@ -48,7 +48,8 @@ const UserProduct = () => {
     );
 
     setCart(updatedCart);
-    localStorage.setItem("cart", JSON.stringify({ items: updatedCart }));
+    localStorage.setItem("cart", JSON.stringify({ table_number, items: updatedCart }));
+
   };
 
   const handleRemoveItem = (cartItemIdToDelete) => {
@@ -78,6 +79,8 @@ const UserProduct = () => {
     menu_id: item.id,
     quantity: item.quantity,
     price: parseFloat(item.price) * (item.quantity || 1), // เก็บเป็นตัวเลข ไม่ต้อง
+    note: item.note,
+    specialRequest: item.specialRequest,
   })),
 };
 

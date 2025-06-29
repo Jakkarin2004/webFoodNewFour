@@ -20,10 +20,10 @@ const UserMenu = () => {
   const [selectedFood, setSelectedFood] = useState(null);
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const [note, setNote] = useState("");
-  const [quantity, setQuantity] = useState("");
+  //ตัวแปลที่ใช้ state เพื่อแยกข้อมูลตามไอดี ของ โน๊ต และระดับการเสิร์ฟ
+  const [noteByMenu, setNoteByMenu] = useState({});
+  const [specialRequestByMenu, setSpecialRequestByMenu] = useState({});
 
-  const [specialRequest, setSpecialRequest] = useState("ธรรมดา");
   const options = ["ธรรมดา", "พิเศษ"];
 
   // ตรวจสอบเลขโต๊ะและเช็ค API ว่าโต๊ะมีจริงไหม
@@ -111,17 +111,19 @@ const UserMenu = () => {
   // เพิ่มเมนูลงตะกร้า
   const handleAddToOrder = (menu_id, menu_name, menu_image, price) => {
     const tableNumber = localStorage.getItem("table_number");
+
     if (!tableNumber) {
       alert("❌ ไม่พบเลขโต๊ะ กรุณาสแกน QR Code ใหม่");
       return;
     }
 
+    // ดึง cart เดิมจาก localStorage ถ้าไม่มีให้เริ่มใหม่ พร้อมใส่เลขโต๊ะ
     let existingCart = JSON.parse(localStorage.getItem("cart")) || {
       table_number: tableNumber,
       items: [],
     };
 
-    // ถ้าเลขโต๊ะใน cart ไม่ตรงกับที่เก็บ ให้เคลียร์ตะกร้า
+    // ถ้าเลขโต๊ะใน cart ไม่ตรงกับที่เก็บไว้ ให้เคลียร์ตะกร้าใหม่
     if (existingCart.table_number !== tableNumber) {
       existingCart = {
         table_number: tableNumber,
@@ -129,26 +131,39 @@ const UserMenu = () => {
       };
     }
 
-    // ตัวแปรที่เอาไว้ทำคำสั่งพิเศษให้กดพิเศษแล้วราคาอาหารจะบวกเพิ่ม 10 บาท
-    const finalPrice =
-      specialRequest === "พิเศษ" ? parseFloat(price) + 10 : parseFloat(price);
+    // ดึงค่าจาก state ที่เก็บ note และคำสั่งพิเศษ
+    const note = noteByMenu[menu_id] || "ไม่มี";
+    const special = specialRequestByMenu[menu_id] || "ธรรมดา";
 
+    // เพิ่มราคา 10 บาทถ้าเป็น "พิเศษ"
+    const finalPrice =
+      special === "พิเศษ" ? parseFloat(price) + 10 : parseFloat(price);
+
+    // สร้าง item ใหม่สำหรับตะกร้า
     const newItem = {
       cartItemId: uuidv4(),
       id: menu_id,
       name: menu_name,
       image: menu_image,
       price: finalPrice,
-      note: note,
-      specialRequest: specialRequest,
-      quantity: quantity || 1,
+      note: note || "ไม่มี",
+      specialRequest: special,
+      quantity: 1,
     };
 
+    // เพิ่ม item เข้าไปใน cart และบันทึกลง localStorage พร้อม table_number
     existingCart.items.push(newItem);
+    localStorage.setItem(
+      "cart",
+      JSON.stringify({
+        table_number: tableNumber,
+        items: existingCart.items,
+      })
+    );
 
-    localStorage.setItem("cart", JSON.stringify(existingCart));
     alert("✅ เพิ่มเมนูลงตะกร้าเรียบร้อย");
   };
+
   return (
     <div className="min-h-screen bg-orange-50">
       <Navbar tableNumber={table_number} />
@@ -253,7 +268,19 @@ const UserMenu = () => {
               <div
                 key={product.menu_id}
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer transform hover:scale-105"
-                onClick={() => setSelectedFood(product)}
+                onClick={() => {
+                  setSelectedFood(product);
+
+                  // ถ้ายังไม่มีค่า ให้กำหนดค่าเริ่มต้น เอาไว้จัดการปัญหา โน๊ต และระดับการเสิร์ฟ ซ้ำกัน ใช้ state
+                  setNoteByMenu((prev) => ({
+                    ...prev,
+                    [product.menu_id]: prev[product.menu_id] || "",
+                  }));
+                  setSpecialRequestByMenu((prev) => ({
+                    ...prev,
+                    [product.menu_id]: prev[product.menu_id] || "ธรรมดา",
+                  }));
+                }}
               >
                 <img
                   src={`${API_URL_IMAGE}/${product.menu_image}`}
@@ -318,7 +345,7 @@ const UserMenu = () => {
               <div className="flex items-center justify-between mb-4">
                 <span className="text-3xl font-bold text-orange-500">
                   ฿
-                  {(specialRequest === "พิเศษ"
+                  {(specialRequestByMenu[selectedFood.menu_id] === "พิเศษ"
                     ? parseFloat(selectedFood.price) + 10
                     : parseFloat(selectedFood.price)
                   ).toFixed(2)}
@@ -351,27 +378,27 @@ const UserMenu = () => {
                 </p>
               </div>
 
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                  ระดับการเสิร์ฟ :
-                </h3>
-                <div className="flex space-x-4">
-                  {options.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => setSpecialRequest(option)}
-                      className={`px-4 py-2 rounded-full border 
-              ${
-                specialRequest === option
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-white text-gray-800 border-gray-300"
-              } 
-              transition duration-200`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex space-x-4">
+                {options.map((option) => (
+                  <button
+                    key={option}
+                    onClick={() =>
+                      setSpecialRequestByMenu((prev) => ({
+                        ...prev,
+                        [selectedFood.menu_id]: option,
+                      }))
+                    }
+                    className={`px-4 py-2 rounded-full border 
+        ${
+          specialRequestByMenu[selectedFood.menu_id] === option
+            ? "bg-orange-500 text-white border-orange-500"
+            : "bg-white text-gray-800 border-gray-300"
+        } 
+        transition duration-200`}
+                  >
+                    {option}
+                  </button>
+                ))}
               </div>
 
               <h3 className="text-xl font-semibold text-gray-800 mb-3 mt-2">
@@ -379,8 +406,13 @@ const UserMenu = () => {
               </h3>
               <input
                 className="border border-gray-400 p-1 rounded-lg w-full mt-1 mb-4"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
+                value={noteByMenu[selectedFood.menu_id] || ""}
+                onChange={(e) =>
+                  setNoteByMenu((prev) => ({
+                    ...prev,
+                    [selectedFood.menu_id]: e.target.value,
+                  }))
+                }
                 type="text"
                 placeholder="โปรดใส่รายละเอียดเพิ่มเติม"
               />
@@ -393,8 +425,7 @@ const UserMenu = () => {
                       selectedFood.menu_id,
                       selectedFood.menu_name,
                       selectedFood.menu_image,
-                      selectedFood.price,
-                      selectedFood.note
+                      selectedFood.price
                     )
                   }
                 >

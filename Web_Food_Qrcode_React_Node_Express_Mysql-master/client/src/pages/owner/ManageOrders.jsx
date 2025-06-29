@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 const API_URL_ORDER = "http://localhost:3000/api/owner/orders";
+const API_URL_REVENUE = "http://localhost:3000/api/owner/orders/today-revenue";
 
 const ManageOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -24,9 +25,15 @@ const ManageOrders = () => {
   const [sortBy, setSortBy] = useState("order_time");
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedOrder, setSelectedOrder] = useState(null);
+  //ยอดขาย
   const [revenueData, setRevenueData] = useState({ totalRevenue: 0 });
+  // 
+  
+  // 
 
   const socket = io("http://localhost:3000");
+
+
 
   const orderStatuses = {
     pending: {
@@ -557,7 +564,12 @@ const ManageOrders = () => {
                         </p>
                         <p className="text-gray-600 text-sm">
                           จำนวน: {item.quantity}
-                          
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          ระดับการเสิร์ฟ: {item.specialRequest}
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          รายละเอียดเพิ่มเติม: {item.note}
                         </p>
                       </div>
                       <div className="text-right">

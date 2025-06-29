@@ -25,7 +25,7 @@ router.get("/all", verifyToken, isOwner, async (req, res) => {
 
     const [rows] = await db.promise().query(
       `SELECT * FROM orders 
-       WHERE DATE(CONVERT_TZ(order_time, '+00:00', '+07:00')) = ?`,
+       WHERE DATE(order_time) = ?`,
       [today]
     );
 
@@ -95,7 +95,7 @@ router.get("/today-revenue", verifyToken, isOwner, async (req, res) => {
         COALESCE(SUM(total_price), 0) AS totalRevenue,
         COUNT(*) AS totalOrders
       FROM orders
-      WHERE DATE(CONVERT_TZ(order_time, '+00:00', '+07:00')) = ?
+      WHERE DATE(order_time) = ?
         AND status = 'completed'`,
       [today]
     );
@@ -138,6 +138,8 @@ router.get("/:orderId", verifyToken, isOwner, async (req, res) => {
          oi.menu_id,
          COALESCE(m.menu_name, 'ไม่พบชื่อเมนู') as menu_name,
          oi.quantity,
+         oi.note,
+         oi.specialRequest,
          oi.price,
          (oi.quantity * oi.price) as subtotal
        FROM order_items oi
